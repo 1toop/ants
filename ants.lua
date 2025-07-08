@@ -53,7 +53,7 @@ local function createButton(text, position, size, parent, color)
 end
 
 local window = Instance.new("Frame")
-window.Size = UDim2.new(0, 350, 0, 250)
+window.Size = UDim2.new(0, 350, 0, 300)
 window.Position = UDim2.new(0, 10, 0, 10)
 window.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 window.Active = true
@@ -61,6 +61,18 @@ window.Draggable = true
 window.Parent = gui
 
 local macroPath = "AntsMacro.json"
+local collectedPath = "CollectedTokens.json"
+
+local collectedSet = {}
+if isfile and isfile(collectedPath) then
+    local ok,dat=pcall(readfile,collectedPath)
+    if ok then
+        local suc,arr=pcall(HttpService.JSONDecode,HttpService,dat)
+        if suc and typeof(arr)=="table" then
+            for _,name in ipairs(arr) do collectedSet[name]=true end
+        end
+    end
+end
 
 local function packCF(cf)
     local a,b,c,d,e,f,g,h,i,j,k,l = cf:GetComponents()
@@ -150,6 +162,9 @@ local playBtn = createButton("Play", UDim2.new(0, 180, 0, 80), UDim2.new(0, 155,
 
 local loopBtn = createButton("Loop: OFF", UDim2.new(0, 15, 0, 125), UDim2.new(0, 155, 0, 35), window, Color3.fromRGB(50, 100, 200))
 
+local stopAfter = 0
+local tokenRadius = 0
+
 local infoLabel = Instance.new("TextLabel")
 infoLabel.Size = UDim2.new(1, -20, 0, 25)
 infoLabel.Position = UDim2.new(0, 10, 0, 175)
@@ -160,12 +175,51 @@ infoLabel.TextScaled = true
 infoLabel.Font = Enum.Font.SourceSans
 infoLabel.Parent = window
 
+local stopBox = Instance.new("TextBox")
+stopBox.Size = UDim2.new(0, 320, 0, 25)
+stopBox.Position = UDim2.new(0, 15, 0, 205)
+stopBox.PlaceholderText = "Stop collecting tokens after (seconds) - 0 = never"
+stopBox.Text = "0"
+stopBox.BackgroundColor3 = Color3.fromRGB(60,60,60)
+stopBox.TextColor3 = Color3.fromRGB(255,255,255)
+stopBox.TextScaled = true
+stopBox.Font = Enum.Font.SourceSans
+stopBox.BorderSizePixel = 0
+stopBox.Parent = window
+stopBox.FocusLost:Connect(function()
+    local v = tonumber(stopBox.Text)
+    if v and v>=0 then
+        stopAfter = v
+    else
+        stopAfter = 0
+    end
+    stopBox.Text = tostring(stopAfter)
+end)
+
+local radiusBox = Instance.new("TextBox")
+radiusBox.Size = UDim2.new(0, 320, 0, 25)
+radiusBox.Position = UDim2.new(0, 15, 0, 235)
+radiusBox.PlaceholderText = "Token collection radius (studs) - 0 = infinite"
+radiusBox.Text = tostring(tokenRadius)
+radiusBox.BackgroundColor3 = Color3.fromRGB(60,60,60)
+radiusBox.TextColor3 = Color3.fromRGB(255,255,255)
+radiusBox.TextScaled = true
+radiusBox.Font = Enum.Font.SourceSans
+radiusBox.BorderSizePixel = 0
+radiusBox.Parent = window
+radiusBox.FocusLost:Connect(function()
+    local v = tonumber(radiusBox.Text)
+    if v and v>=0 then tokenRadius=v else tokenRadius=0 end
+    radiusBox.Text = tostring(tokenRadius)
+end)
+
 local log = loadMacro()
 local recording = false
 local conn
 local start = 0
 local loopPlayback = false
 local connPlay = nil
+local playStartTick = 0
 
 local function updateUI()
     if recording then
@@ -254,15 +308,30 @@ task.spawn(function()
         hrp = char:WaitForChild("HumanoidRootPart")
     end)
     while true do
+        local collectingAllowed = false
         if not recording then
+            if stopAfter==0 then
+                collectingAllowed = true
+            elseif playStartTick==0 then -- not playing
+                collectingAllowed = true
+            else
+                if tick()-playStartTick < stopAfter then collectingAllowed=true end
+            end
+        end
+        if collectingAllowed then
             for _,tok in ipairs(tokensFolder:GetChildren()) do
                 if tokenBlacklist[tok.Name] then
                     continue
                 end
                 local part = tok:IsA("BasePart") and tok or (tok:IsA("Model") and tok.PrimaryPart)
+                if tokenRadius>0 and part and hrp and (part.Position-hrp.Position).Magnitude>tokenRadius then
+                    continue
+                end
                 if part and hrp then
                     local prev = hrp.CFrame
                     hrp.CFrame = part.CFrame + Vector3.new(0,3,0)
+                    -- track collected token name
+                    collectedSet[tok.Name]=true
                     task.wait()
                     hrp.CFrame = prev
                 end
@@ -330,6 +399,7 @@ playBtn.MouseButton1Click:Connect(function()
     local cam = workspace.CurrentCamera
     local i = 1
     local startT = tick()
+    playStartTick = startT
     
     statusLabel.Text = "Status: Playing..."
     statusLabel.TextColor3 = Color3.fromRGB(50, 150, 50)
@@ -343,9 +413,18 @@ playBtn.MouseButton1Click:Connect(function()
         end
         
         if i > #log then
+            -- save collected tokens list
+            if writefile then
+                local arr={}
+                for name,_ in pairs(collectedSet) do table.insert(arr,name) end
+                local ok,enc=pcall(HttpService.JSONEncode,HttpService,arr)
+                if ok then pcall(writefile,collectedPath,enc) end
+            end
+            playStartTick = 0
             if loopPlayback then
                 i = 1
                 startT = tick()
+                playStartTick = startT
             else
                 connPlay:Disconnect()
                 connPlay = nil
