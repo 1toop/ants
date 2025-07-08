@@ -1,4 +1,5 @@
 local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 local UIS = game:GetService("UserInputService")
 local VIM = game:GetService("VirtualInputManager")
@@ -59,9 +60,64 @@ window.Active = true
 window.Draggable = true
 window.Parent = gui
 
+local macroPath = "AntsMacro.json"
+
+local function packCF(cf)
+    local a,b,c,d,e,f,g,h,i,j,k,l = cf:GetComponents()
+    return {a,b,c,d,e,f,g,h,i,j,k,l}
+end
+local function unpackCF(arr)
+    if type(arr) ~= "table" or #arr~=12 then return nil end
+    return CFrame.new(table.unpack(arr))
+end
+local function saveMacro(tbl)
+    if not writefile then return end
+    local serial = {}
+    for i,e in ipairs(tbl) do
+        local copy = {}
+        for k,v in pairs(e) do copy[k]=v end
+        if copy.kind=="frame" then
+            copy.pos = packCF(copy.pos)
+            copy.cam = packCF(copy.cam)
+        end
+        table.insert(serial,copy)
+    end
+    local ok,enc = pcall(HttpService.JSONEncode,HttpService,serial)
+    if ok then pcall(writefile,macroPath,enc) end
+end
+local function loadMacro()
+    if isfile and isfile(macroPath) then
+        local ok,dat = pcall(readfile,macroPath)
+        if ok then
+            local succ,decoded = pcall(HttpService.JSONDecode,HttpService,dat)
+            if succ and typeof(decoded)=="table" then
+                -- unpack CFrames
+                for _,e in ipairs(decoded) do
+                    if e.kind=="frame" then
+                        e.pos = unpackCF(e.pos) or CFrame.new()
+                        e.cam = unpackCF(e.cam) or workspace.CurrentCamera.CFrame
+                    end
+                end
+                return decoded
+            end
+        end
+    end
+    return {}
+end
+local function clearMacro()
+    log = {}
+    if delfile and isfile and isfile(macroPath) then pcall(delfile,macroPath) end
+end
+
 local windowCorner = Instance.new("UICorner")
 windowCorner.CornerRadius = UDim.new(0, 12)
 windowCorner.Parent = window
+
+local clearBtn = createButton("Clear", UDim2.new(0, 180, 0, 125), UDim2.new(0, 155, 0, 35), window, Color3.fromRGB(150,100,50))
+clearBtn.MouseButton1Click:Connect(function()
+    clearMacro()
+    updateUI()
+end)
 
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 35)
@@ -94,8 +150,6 @@ local playBtn = createButton("Play", UDim2.new(0, 180, 0, 80), UDim2.new(0, 155,
 
 local loopBtn = createButton("Loop: OFF", UDim2.new(0, 15, 0, 125), UDim2.new(0, 155, 0, 35), window, Color3.fromRGB(50, 100, 200))
 
-local clearBtn = createButton("Clear", UDim2.new(0, 180, 0, 125), UDim2.new(0, 155, 0, 35), window, Color3.fromRGB(150, 100, 50))
-
 local infoLabel = Instance.new("TextLabel")
 infoLabel.Size = UDim2.new(1, -20, 0, 25)
 infoLabel.Position = UDim2.new(0, 10, 0, 175)
@@ -106,7 +160,7 @@ infoLabel.TextScaled = true
 infoLabel.Font = Enum.Font.SourceSans
 infoLabel.Parent = window
 
-local log = {}
+local log = loadMacro()
 local recording = false
 local conn
 local start = 0
@@ -134,7 +188,8 @@ local function updateUI()
 end
 recBtn.MouseButton1Click:Connect(function()
     if recording then
-        recording = false
+        recording=false
+        saveMacro(log)
         if conn then conn:Disconnect() end
         updateUI()
         return
@@ -187,6 +242,33 @@ task.spawn(function()
             hum.WalkSpeed = SPEED 
         end
         task.wait()
+    end
+end)
+
+local tokensFolder = workspace:WaitForChild("Tokens")
+local tokenBlacklist = { ["Star"] = true, ["Worm"] = true }
+
+task.spawn(function()
+    local hrp = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
+    plr.CharacterAdded:Connect(function(char)
+        hrp = char:WaitForChild("HumanoidRootPart")
+    end)
+    while true do
+        if not recording then
+            for _,tok in ipairs(tokensFolder:GetChildren()) do
+                if tokenBlacklist[tok.Name] then
+                    continue
+                end
+                local part = tok:IsA("BasePart") and tok or (tok:IsA("Model") and tok.PrimaryPart)
+                if part and hrp then
+                    local prev = hrp.CFrame
+                    hrp.CFrame = part.CFrame + Vector3.new(0,3,0)
+                    task.wait()
+                    hrp.CFrame = prev
+                end
+            end
+        end
+        task.wait(0.05)
     end
 end)
 
