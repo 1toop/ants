@@ -419,7 +419,6 @@ playBtn.MouseButton1Click:Connect(function()
         end
         
         if i > #log then
-            -- save collected tokens list
             if writefile then
                 local arr={}
                 for name,_ in pairs(collectedSet) do table.insert(arr,name) end
