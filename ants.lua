@@ -300,7 +300,14 @@ task.spawn(function()
 end)
 
 local tokensFolder = workspace:WaitForChild("Tokens")
-local tokenBlacklist = { ["Star"] = true, ["Worm"] = true }
+local tokenBlacklist = {
+    ["Star"] = true,
+    ["Worm"] = true,
+    ["Sunflower Seed"] = true,
+    ["Cookie"] = true,
+    ["Strawberry"] = true,
+    ["Bronze Coin"] = true
+}
 
 task.spawn(function()
     local hrp = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
