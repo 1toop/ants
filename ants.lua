@@ -330,7 +330,6 @@ task.spawn(function()
                 if part and hrp then
                     local prev = hrp.CFrame
                     hrp.CFrame = part.CFrame + Vector3.new(0,3,0)
-                    -- track collected token name
                     collectedSet[tok.Name]=true
                     task.wait()
                     hrp.CFrame = prev
