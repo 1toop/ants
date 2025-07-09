@@ -16,14 +16,27 @@ local args1 = {[1] = "UseTool"; [2] = 1}
 local args2 = {[1] = "UseTool"; [2] = 2}
 local interval = 1/70
 
+local autoDigRunning = true
+local macroPlaybackRunning = false
+local tokenCollectionRunning = true
+
 task.spawn(function()
     while true do
-        evt:FireServer(unpack(args2))
-        task.wait(interval)
-        evt:FireServer(unpack(args1))
-        task.wait(interval)
+        if autoDigRunning and evt and evt.FireServer then
+            pcall(function()
+                evt:FireServer(unpack(args2))
+            end)
+            task.wait(interval)
+            pcall(function()
+                evt:FireServer(unpack(args1))
+            end)
+            task.wait(interval)
+        else
+            task.wait(0.1)
+        end
     end
 end)
+
 local function createButton(text, position, size, parent, color)
     local button = Instance.new("TextButton")
     button.Size = size or UDim2.new(1, -20, 0, 30)
@@ -39,6 +52,7 @@ local function createButton(text, position, size, parent, color)
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 8)
     corner.Parent = button
+    
     button.MouseEnter:Connect(function()
         local tween = TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(90, 90, 90)})
         tween:Play()
@@ -53,7 +67,7 @@ local function createButton(text, position, size, parent, color)
 end
 
 local window = Instance.new("Frame")
-window.Size = UDim2.new(0, 350, 0, 300)
+window.Size = UDim2.new(0, 350, 0, 380)
 window.Position = UDim2.new(0, 10, 0, 10)
 window.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 window.Active = true
@@ -65,49 +79,56 @@ local collectedPath = "CollectedTokens.json"
 
 local collectedSet = {}
 if isfile and isfile(collectedPath) then
-    local ok,dat=pcall(readfile,collectedPath)
+    local ok, dat = pcall(readfile, collectedPath)
     if ok then
-        local suc,arr=pcall(HttpService.JSONDecode,HttpService,dat)
-        if suc and typeof(arr)=="table" then
-            for _,name in ipairs(arr) do collectedSet[name]=true end
+        local suc, arr = pcall(HttpService.JSONDecode, HttpService, dat)
+        if suc and typeof(arr) == "table" then
+            for _, name in ipairs(arr) do 
+                collectedSet[name] = true 
+            end
         end
     end
 end
 
 local function packCF(cf)
+    if not cf then return {0,0,0,1,0,0,0,1,0,0,0,1} end
     local a,b,c,d,e,f,g,h,i,j,k,l = cf:GetComponents()
     return {a,b,c,d,e,f,g,h,i,j,k,l}
 end
+
 local function unpackCF(arr)
-    if type(arr) ~= "table" or #arr~=12 then return nil end
+    if type(arr) ~= "table" or #arr ~= 12 then return CFrame.new() end
     return CFrame.new(table.unpack(arr))
 end
+
 local function saveMacro(tbl)
     if not writefile then return end
     local serial = {}
-    for i,e in ipairs(tbl) do
+    for i, e in ipairs(tbl) do
         local copy = {}
-        for k,v in pairs(e) do copy[k]=v end
-        if copy.kind=="frame" then
+        for k, v in pairs(e) do copy[k] = v end
+        if copy.kind == "frame" then
             copy.pos = packCF(copy.pos)
             copy.cam = packCF(copy.cam)
         end
-        table.insert(serial,copy)
+        table.insert(serial, copy)
     end
-    local ok,enc = pcall(HttpService.JSONEncode,HttpService,serial)
-    if ok then pcall(writefile,macroPath,enc) end
+    local ok, enc = pcall(HttpService.JSONEncode, HttpService, serial)
+    if ok then 
+        pcall(writefile, macroPath, enc) 
+    end
 end
+
 local function loadMacro()
     if isfile and isfile(macroPath) then
-        local ok,dat = pcall(readfile,macroPath)
+        local ok, dat = pcall(readfile, macroPath)
         if ok then
-            local succ,decoded = pcall(HttpService.JSONDecode,HttpService,dat)
-            if succ and typeof(decoded)=="table" then
-                -- unpack CFrames
-                for _,e in ipairs(decoded) do
-                    if e.kind=="frame" then
+            local succ, decoded = pcall(HttpService.JSONDecode, HttpService, dat)
+            if succ and typeof(decoded) == "table" then
+                for _, e in ipairs(decoded) do
+                    if e.kind == "frame" then
                         e.pos = unpackCF(e.pos) or CFrame.new()
-                        e.cam = unpackCF(e.cam) or workspace.CurrentCamera.CFrame
+                        e.cam = unpackCF(e.cam) or (workspace.CurrentCamera and workspace.CurrentCamera.CFrame or CFrame.new())
                     end
                 end
                 return decoded
@@ -116,20 +137,10 @@ local function loadMacro()
     end
     return {}
 end
-local function clearMacro()
-    log = {}
-    if delfile and isfile and isfile(macroPath) then pcall(delfile,macroPath) end
-end
 
 local windowCorner = Instance.new("UICorner")
 windowCorner.CornerRadius = UDim.new(0, 12)
 windowCorner.Parent = window
-
-local clearBtn = createButton("Clear", UDim2.new(0, 180, 0, 125), UDim2.new(0, 155, 0, 35), window, Color3.fromRGB(150,100,50))
-clearBtn.MouseButton1Click:Connect(function()
-    clearMacro()
-    updateUI()
-end)
 
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 35)
@@ -157,17 +168,20 @@ statusLabel.Font = Enum.Font.SourceSans
 statusLabel.Parent = window
 
 local recBtn = createButton("Start Recording", UDim2.new(0, 15, 0, 80), UDim2.new(0, 155, 0, 35), window, Color3.fromRGB(220, 50, 50))
-
 local playBtn = createButton("Play", UDim2.new(0, 180, 0, 80), UDim2.new(0, 155, 0, 35), window, Color3.fromRGB(50, 150, 50))
-
 local loopBtn = createButton("Loop: OFF", UDim2.new(0, 15, 0, 125), UDim2.new(0, 155, 0, 35), window, Color3.fromRGB(50, 100, 200))
+local stopMacroBtn = createButton("Stop Macro", UDim2.new(0, 180, 0, 125), UDim2.new(0, 155, 0, 35), window, Color3.fromRGB(200, 50, 50))
+
+local autoDigBtn = createButton("AutoDig: ON", UDim2.new(0, 15, 0, 170), UDim2.new(0, 155, 0, 35), window, Color3.fromRGB(50, 200, 50))
+local tokenBtn = createButton("Token Collection: ON", UDim2.new(0, 180, 0, 170), UDim2.new(0, 155, 0, 35), window, Color3.fromRGB(50, 200, 50))
 
 local stopAfter = 0
 local tokenRadius = 0
+local suspendFrames = false
 
 local infoLabel = Instance.new("TextLabel")
 infoLabel.Size = UDim2.new(1, -20, 0, 25)
-infoLabel.Position = UDim2.new(0, 10, 0, 175)
+infoLabel.Position = UDim2.new(0, 10, 0, 215)
 infoLabel.Text = "Frames: 0 | Duration: 0s"
 infoLabel.BackgroundTransparency = 1
 infoLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
@@ -177,18 +191,65 @@ infoLabel.Parent = window
 
 local stopBox = Instance.new("TextBox")
 stopBox.Size = UDim2.new(0, 320, 0, 25)
-stopBox.Position = UDim2.new(0, 15, 0, 205)
+stopBox.Position = UDim2.new(0, 15, 0, 245)
 stopBox.PlaceholderText = "Stop collecting tokens after (seconds) - 0 = never"
 stopBox.Text = "0"
-stopBox.BackgroundColor3 = Color3.fromRGB(60,60,60)
-stopBox.TextColor3 = Color3.fromRGB(255,255,255)
+stopBox.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+stopBox.TextColor3 = Color3.fromRGB(255, 255, 255)
 stopBox.TextScaled = true
 stopBox.Font = Enum.Font.SourceSans
 stopBox.BorderSizePixel = 0
 stopBox.Parent = window
+
+local stopBoxCorner = Instance.new("UICorner")
+stopBoxCorner.CornerRadius = UDim.new(0, 4)
+stopBoxCorner.Parent = stopBox
+
+local radiusBox = Instance.new("TextBox")
+radiusBox.Size = UDim2.new(0, 320, 0, 25)
+radiusBox.Position = UDim2.new(0, 15, 0, 275)
+radiusBox.PlaceholderText = "Token collection radius (studs) - 0 = infinite"
+radiusBox.Text = tostring(tokenRadius)
+radiusBox.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+radiusBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+radiusBox.TextScaled = true
+radiusBox.Font = Enum.Font.SourceSans
+radiusBox.BorderSizePixel = 0
+radiusBox.Parent = window
+
+local radiusBoxCorner = Instance.new("UICorner")
+radiusBoxCorner.CornerRadius = UDim.new(0, 4)
+radiusBoxCorner.Parent = radiusBox
+
+local speedLabel = Instance.new("TextLabel")
+speedLabel.Size = UDim2.new(1, -20, 0, 25)
+speedLabel.Position = UDim2.new(0, 10, 0, 305)
+speedLabel.Text = "AutoSpeed: 70"
+speedLabel.BackgroundTransparency = 1
+speedLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+speedLabel.TextScaled = true
+speedLabel.Font = Enum.Font.SourceSans
+speedLabel.Parent = window
+
+local speedBox = Instance.new("TextBox")
+speedBox.Size = UDim2.new(0, 320, 0, 25)
+speedBox.Position = UDim2.new(0, 15, 0, 330)
+speedBox.PlaceholderText = "Walk speed (default: 70)"
+speedBox.Text = "70"
+speedBox.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+speedBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+speedBox.TextScaled = true
+speedBox.Font = Enum.Font.SourceSans
+speedBox.BorderSizePixel = 0
+speedBox.Parent = window
+
+local speedBoxCorner = Instance.new("UICorner")
+speedBoxCorner.CornerRadius = UDim.new(0, 4)
+speedBoxCorner.Parent = speedBox
+
 stopBox.FocusLost:Connect(function()
     local v = tonumber(stopBox.Text)
-    if v and v>=0 then
+    if v and v >= 0 then
         stopAfter = v
     else
         stopAfter = 0
@@ -196,21 +257,26 @@ stopBox.FocusLost:Connect(function()
     stopBox.Text = tostring(stopAfter)
 end)
 
-local radiusBox = Instance.new("TextBox")
-radiusBox.Size = UDim2.new(0, 320, 0, 25)
-radiusBox.Position = UDim2.new(0, 15, 0, 235)
-radiusBox.PlaceholderText = "Token collection radius (studs) - 0 = infinite"
-radiusBox.Text = tostring(tokenRadius)
-radiusBox.BackgroundColor3 = Color3.fromRGB(60,60,60)
-radiusBox.TextColor3 = Color3.fromRGB(255,255,255)
-radiusBox.TextScaled = true
-radiusBox.Font = Enum.Font.SourceSans
-radiusBox.BorderSizePixel = 0
-radiusBox.Parent = window
 radiusBox.FocusLost:Connect(function()
     local v = tonumber(radiusBox.Text)
-    if v and v>=0 then tokenRadius=v else tokenRadius=0 end
+    if v and v >= 0 then 
+        tokenRadius = v 
+    else 
+        tokenRadius = 0 
+    end
     radiusBox.Text = tostring(tokenRadius)
+end)
+
+local walkSpeed = 70
+speedBox.FocusLost:Connect(function()
+    local v = tonumber(speedBox.Text)
+    if v and v > 0 then
+        walkSpeed = v
+    else
+        walkSpeed = 70
+    end
+    speedBox.Text = tostring(walkSpeed)
+    speedLabel.Text = "AutoSpeed: " .. walkSpeed
 end)
 
 local log = loadMacro()
@@ -230,21 +296,64 @@ local function updateUI()
     else
         recBtn.Text = "Start Recording"
         recBtn.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
-        statusLabel.Text = "Status: Ready"
-        statusLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+        if not macroPlaybackRunning then
+            statusLabel.Text = "Status: Ready"
+            statusLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+        end
     end
     
     local duration = #log > 0 and log[#log].t or 0
     infoLabel.Text = string.format("Frames: %d | Duration: %.1fs", #log, duration)
     
-    playBtn.BackgroundColor3 = #log > 0 and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(100, 100, 100)
-    clearBtn.BackgroundColor3 = #log > 0 and Color3.fromRGB(150, 100, 50) or Color3.fromRGB(100, 100, 100)
+    playBtn.BackgroundColor3 = (#log > 0 and not recording) and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(100, 100, 100)
+    stopMacroBtn.BackgroundColor3 = macroPlaybackRunning and Color3.fromRGB(200, 50, 50) or Color3.fromRGB(100, 100, 100)
+    
+    autoDigBtn.Text = autoDigRunning and "AutoDig: ON" or "AutoDig: OFF"
+    autoDigBtn.BackgroundColor3 = autoDigRunning and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(200, 50, 50)
+    
+    tokenBtn.Text = tokenCollectionRunning and "Token Collection: ON" or "Token Collection: OFF"
+    tokenBtn.BackgroundColor3 = tokenCollectionRunning and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(200, 50, 50)
 end
+
+autoDigBtn.MouseButton1Click:Connect(function()
+    autoDigRunning = not autoDigRunning
+    updateUI()
+end)
+
+tokenBtn.MouseButton1Click:Connect(function()
+    tokenCollectionRunning = not tokenCollectionRunning
+    updateUI()
+end)
+
+stopMacroBtn.MouseButton1Click:Connect(function()
+    if not macroPlaybackRunning then return end
+    
+    macroPlaybackRunning = false
+    
+    if connPlay then
+        connPlay:Disconnect()
+        connPlay = nil
+    end
+    
+    statusLabel.Text = "Status: Macro Stopped"
+    statusLabel.TextColor3 = Color3.fromRGB(200, 50, 50)
+    updateUI()
+    
+    task.wait(1)
+    if not recording and not macroPlaybackRunning then
+        statusLabel.Text = "Status: Ready"
+        statusLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+    end
+end)
+
 recBtn.MouseButton1Click:Connect(function()
     if recording then
-        recording=false
+        recording = false
         saveMacro(log)
-        if conn then conn:Disconnect() end
+        if conn then 
+            conn:Disconnect() 
+            conn = nil
+        end
         updateUI()
         return
     end
@@ -258,16 +367,20 @@ recBtn.MouseButton1Click:Connect(function()
     local hrp = char:WaitForChild("HumanoidRootPart")
     
     conn = RunService.RenderStepped:Connect(function()
-        log[#log + 1] = {
-            t = tick() - start,
-            kind = "frame",
-            pos = hrp.CFrame,
-            cam = workspace.CurrentCamera.CFrame
-        }
+        if not recording then return end
         
-        if #log % 30 == 0 then
-            updateUI()
-        end
+        pcall(function()
+            log[#log + 1] = {
+                t = tick() - start,
+                kind = "frame",
+                pos = hrp.CFrame,
+                cam = workspace.CurrentCamera.CFrame
+            }
+            
+            if #log % 30 == 0 then
+                updateUI()
+            end
+        end)
     end)
 end)
 
@@ -275,27 +388,17 @@ loopBtn.MouseButton1Click:Connect(function()
     loopPlayback = not loopPlayback
     loopBtn.Text = loopPlayback and "Loop: ON" or "Loop: OFF"
     loopBtn.BackgroundColor3 = loopPlayback and Color3.fromRGB(50, 200, 100) or Color3.fromRGB(50, 100, 200)
-    
-    if not loopPlayback and connPlay then
-        connPlay:Disconnect()
-        connPlay = nil
-    end
 end)
 
-clearBtn.MouseButton1Click:Connect(function()
-    if recording then return end
-    log = {}
-    updateUI()
-end)
-
-local SPEED = 70
 task.spawn(function()
     while true do
-        local hum = plr.Character and plr.Character:FindFirstChildOfClass("Humanoid")
-        if hum and hum.WalkSpeed ~= SPEED then 
-            hum.WalkSpeed = SPEED 
-        end
-        task.wait()
+        pcall(function()
+            local hum = plr.Character and plr.Character:FindFirstChildOfClass("Humanoid")
+            if hum and hum.WalkSpeed ~= walkSpeed then 
+                hum.WalkSpeed = walkSpeed 
+            end
+        end)
+        task.wait(1)
     end
 end)
 
@@ -311,53 +414,75 @@ local tokenBlacklist = {
 
 task.spawn(function()
     local hrp = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
+    
     plr.CharacterAdded:Connect(function(char)
         hrp = char:WaitForChild("HumanoidRootPart")
     end)
+    
     while true do
-        local collectingAllowed = false
-        if not recording then
-            if stopAfter==0 then
-                collectingAllowed = true
-            elseif playStartTick==0 then -- not playing
-                collectingAllowed = true
-            else
-                if tick()-playStartTick < stopAfter then collectingAllowed=true end
+        pcall(function()
+            if not tokenCollectionRunning then
+                task.wait(1)
+                return
             end
-        end
-        if collectingAllowed then
-            for _,tok in ipairs(tokensFolder:GetChildren()) do
-                if tokenBlacklist[tok.Name] then
-                    continue
-                end
-                local part = tok:IsA("BasePart") and tok or (tok:IsA("Model") and tok.PrimaryPart)
-                if tokenRadius>0 and part and hrp and (part.Position-hrp.Position).Magnitude>tokenRadius then
-                    continue
-                end
-                if part and hrp then
-                    local prev = hrp.CFrame
-                    hrp.CFrame = part.CFrame + Vector3.new(0,3,0)
-                    collectedSet[tok.Name]=true
-                    task.wait()
-                    hrp.CFrame = prev
+            
+            local collectingAllowed = false
+            if not recording then
+                if stopAfter == 0 then
+                    collectingAllowed = true
+                elseif playStartTick == 0 then
+                    collectingAllowed = true
+                else
+                    if tick() - playStartTick < stopAfter then 
+                        collectingAllowed = true 
+                    end
                 end
             end
-        end
+            
+            if collectingAllowed and hrp then
+                for _, tok in ipairs(tokensFolder:GetChildren()) do
+                    if not tokenCollectionRunning then break end
+                    
+                    if tokenBlacklist[tok.Name] then
+                        continue
+                    end
+                    
+                    local part = tok:IsA("BasePart") and tok or (tok:IsA("Model") and tok.PrimaryPart)
+                    if playStartTick>0 and tokenRadius>0 and part and hrp and (part.Position-hrp.Position).Magnitude>tokenRadius then
+                        continue
+                    end
+                    
+                    if part and hrp then
+                        suspendFrames = true
+                        local prev = hrp.CFrame
+                        hrp.CFrame = part.CFrame + Vector3.new(0,3,0)
+                        collectedSet[tok.Name]=true
+                        task.wait(0.05)
+                        if playStartTick==0 then
+                            hrp.CFrame = prev
+                        end
+                        suspendFrames = false
+                    end
+                end
+            end
+        end)
         task.wait(0.05)
     end
 end)
 
 local function inputLog(tp, io)
     if not recording then return end
-    log[#log + 1] = {
-        t = tick() - start,
-        kind = "input",
-        ev = tp,
-        key = io.KeyCode,
-        uitype = io.UserInputType,
-        pos = io.Position,
-        delta = io.Delta
-    }
+    pcall(function()
+        log[#log + 1] = {
+            t = tick() - start,
+            kind = "input",
+            ev = tp,
+            key = io.KeyCode,
+            uitype = io.UserInputType,
+            pos = io.Position,
+            delta = io.Delta
+        }
+    end)
 end
 
 UIS.InputBegan:Connect(function(io, gp) 
@@ -379,27 +504,32 @@ UIS.InputChanged:Connect(function(io, gp)
 end)
 
 local function applyEntry(entry, hrp, cam)
-    if entry.kind == "frame" then
+    if not hrp or not cam then return end
+    
+    pcall(function()
+        if entry.kind == "frame" then
+            if not suspendFrames then
         hrp.CFrame = entry.pos
-        cam.CFrame = entry.cam
-    elseif entry.kind == "input" then
-        if entry.uitype == Enum.UserInputType.Keyboard then
-            VIM:SendKeyEvent(entry.ev ~= "ended", entry.key, false, game)
-        elseif entry.uitype == Enum.UserInputType.MouseButton1 or entry.uitype == Enum.UserInputType.MouseButton2 then
-            VIM:SendMouseButtonEvent(entry.pos.X, entry.pos.Y, entry.uitype == Enum.UserInputType.MouseButton1 and 0 or 1, entry.ev ~= "ended", game, 0)
-        elseif entry.uitype == Enum.UserInputType.MouseMovement then
-            pcall(function()
+    end
+            cam.CFrame = entry.cam
+        elseif entry.kind == "input" then
+            if entry.uitype == Enum.UserInputType.Keyboard then
+                VIM:SendKeyEvent(entry.ev ~= "ended", entry.key, false, game)
+            elseif entry.uitype == Enum.UserInputType.MouseButton1 or entry.uitype == Enum.UserInputType.MouseButton2 then
+                VIM:SendMouseButtonEvent(entry.pos.X, entry.pos.Y, entry.uitype == Enum.UserInputType.MouseButton1 and 0 or 1, entry.ev ~= "ended", game, 0)
+            elseif entry.uitype == Enum.UserInputType.MouseMovement then
                 if VIM.SendMouseMoveEvent then
                     VIM:SendMouseMoveEvent(entry.pos.X, entry.pos.Y, game)
                 end
-            end)
+            end
         end
-    end
+    end)
 end
 
 playBtn.MouseButton1Click:Connect(function()
-    if recording or #log == 0 then return end
+    if recording or #log == 0 or macroPlaybackRunning then return end
     
+    macroPlaybackRunning = true
     local char = plr.Character or plr.CharacterAdded:Wait()
     local hrp = char:WaitForChild("HumanoidRootPart")
     local cam = workspace.CurrentCamera
@@ -409,34 +539,54 @@ playBtn.MouseButton1Click:Connect(function()
     
     statusLabel.Text = "Status: Playing..."
     statusLabel.TextColor3 = Color3.fromRGB(50, 150, 50)
+    updateUI()
     
     connPlay = RunService.RenderStepped:Connect(function()
-        local elapsed = tick() - startT
-        
-        while i <= #log and log[i].t <= elapsed do
-            applyEntry(log[i], hrp, cam)
-            i += 1
-        end
-        
-        if i > #log then
-            if writefile then
-                local arr={}
-                for name,_ in pairs(collectedSet) do table.insert(arr,name) end
-                local ok,enc=pcall(HttpService.JSONEncode,HttpService,arr)
-                if ok then pcall(writefile,collectedPath,enc) end
-            end
-            playStartTick = 0
-            if loopPlayback then
-                i = 1
-                startT = tick()
-                playStartTick = startT
-            else
+        if not macroPlaybackRunning or not connPlay then 
+            if connPlay then
                 connPlay:Disconnect()
                 connPlay = nil
-                statusLabel.Text = "Status: Ready"
-                statusLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
             end
+            return 
         end
+        
+        pcall(function()
+            local elapsed = tick() - startT
+            
+            while i <= #log and log[i].t <= elapsed do
+                if macroPlaybackRunning then
+                    applyEntry(log[i], hrp, cam)
+                end
+                i += 1
+            end
+            
+            if i > #log then
+                if writefile then
+                    local arr = {}
+                    for name, _ in pairs(collectedSet) do 
+                        table.insert(arr, name) 
+                    end
+                    local ok, enc = pcall(HttpService.JSONEncode, HttpService, arr)
+                    if ok then 
+                        pcall(writefile, collectedPath, enc) 
+                    end
+                end
+                
+                playStartTick = 0
+                if loopPlayback and macroPlaybackRunning then
+                    i = 1
+                    startT = tick()
+                    playStartTick = startT
+                else
+                    macroPlaybackRunning = false
+                    connPlay:Disconnect()
+                    connPlay = nil
+                    statusLabel.Text = "Status: Ready"
+                    statusLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+                    updateUI()
+                end
+            end
+        end)
     end)
 end)
 
