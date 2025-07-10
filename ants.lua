@@ -90,54 +90,6 @@ if isfile and isfile(collectedPath) then
     end
 end
 
-local function packCF(cf)
-    if not cf then return {0,0,0,1,0,0,0,1,0,0,0,1} end
-    local a,b,c,d,e,f,g,h,i,j,k,l = cf:GetComponents()
-    return {a,b,c,d,e,f,g,h,i,j,k,l}
-end
-
-local function unpackCF(arr)
-    if type(arr) ~= "table" or #arr ~= 12 then return CFrame.new() end
-    return CFrame.new(table.unpack(arr))
-end
-
-local function saveMacro(tbl)
-    if not writefile then return end
-    local serial = {}
-    for i, e in ipairs(tbl) do
-        local copy = {}
-        for k, v in pairs(e) do copy[k] = v end
-        if copy.kind == "frame" then
-            copy.pos = packCF(copy.pos)
-            copy.cam = packCF(copy.cam)
-        end
-        table.insert(serial, copy)
-    end
-    local ok, enc = pcall(HttpService.JSONEncode, HttpService, serial)
-    if ok then 
-        pcall(writefile, macroPath, enc) 
-    end
-end
-
-local function loadMacro()
-    if isfile and isfile(macroPath) then
-        local ok, dat = pcall(readfile, macroPath)
-        if ok then
-            local succ, decoded = pcall(HttpService.JSONDecode, HttpService, dat)
-            if succ and typeof(decoded) == "table" then
-                for _, e in ipairs(decoded) do
-                    if e.kind == "frame" then
-                        e.pos = unpackCF(e.pos) or CFrame.new()
-                        e.cam = unpackCF(e.cam) or (workspace.CurrentCamera and workspace.CurrentCamera.CFrame or CFrame.new())
-                    end
-                end
-                return decoded
-            end
-        end
-    end
-    return {}
-end
-
 local windowCorner = Instance.new("UICorner")
 windowCorner.CornerRadius = UDim.new(0, 12)
 windowCorner.Parent = window
@@ -279,7 +231,7 @@ speedBox.FocusLost:Connect(function()
     speedLabel.Text = "AutoSpeed: " .. walkSpeed
 end)
 
-local log = loadMacro()
+local log = {}
 local recording = false
 local conn
 local start = 0
@@ -349,7 +301,6 @@ end)
 recBtn.MouseButton1Click:Connect(function()
     if recording then
         recording = false
-        saveMacro(log)
         if conn then 
             conn:Disconnect() 
             conn = nil
@@ -404,12 +355,13 @@ end)
 
 local tokensFolder = workspace:WaitForChild("Tokens")
 local tokenBlacklist = {
-    ["Star"] = true,
-    ["Worm"] = true,
-    ["Sunflower Seed"] = true,
+    ["Star"] = false,
+    ["Worm"] = false,
+    ["Sunflower Seed"] = false,
     ["Cookie"] = true,
-    ["Strawberry"] = true,
-    ["Bronze Coin"] = true
+    ["Strawberry"] = false,
+    ["Bronze Coin"] = true,
+    ["Golden Coin"] = true
 }
 
 task.spawn(function()
