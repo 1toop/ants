@@ -8,7 +8,7 @@ local plr = Players.LocalPlayer
 
 local gui = Instance.new("ScreenGui", plr:WaitForChild("PlayerGui"))
 gui.ResetOnSpawn = false
-gui.Name = "RecorderGUI"
+gui.Name = "nigger"
 
 local rep = game:GetService("ReplicatedStorage")
 local evt = rep:WaitForChild("Events", 9e9):WaitForChild("Server_Event", 9e9)
