@@ -1,4 +1,5 @@
-# [Ants Simulator 2 script!](https://www.roblox.com/games/16667590131/Ants-Simulator-2)
+# [Ants Simulator 2 script!](https://www.roblox.com/games/16667590131/Ants-Simulator-2) <img width="892" height="338" alt="image" src="https://github.com/user-attachments/assets/84172e62-89a7-49ce-bed7-217068704610" />
+
 
 **Discord:** https://discord.gg/BcnxDQa32N
 
