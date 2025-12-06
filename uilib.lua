@@ -568,8 +568,8 @@ function Library:create(options)
 		wait(0.1)
 		core:tween({Size = UDim2.new()}, function()
 			gui.AbsoluteObject:Destroy()
-			if getgenv and getgenv().AntFarmClose then
-				getgenv().AntFarmClose()
+			if getgenv and getgenv().AntsClose then
+				getgenv().AntsClose()
 			end
 		end)
 	end
@@ -871,7 +871,7 @@ function Library:create(options)
 	settingsTab:keybind{
 		Name = "Toggle Key",
 		Description = "Key to show/hide the UI.",
-		Keybind = Enum.KeyCode.Delete,
+		Keybind = Enum.KeyCode.Insert,
 		Callback = function()
 			self.Toggled = not self.Toggled
 			Library:show(self.Toggled)
@@ -906,6 +906,7 @@ function Library:create(options)
 	rawset(mt, "creditsContainer", creditsTab.container)
 
 	creditsTab:credit{Name = ".toop", Description = "Script Developer", Discord = ".toop"}
+	creditsTab:credit{Name = "Discord Server", Description = "discord.gg/BcnxDQa32N", Discord = "BcnxDQa32N"}
 
 	return mt
 end
