@@ -470,41 +470,70 @@ function Library:create(options)
 		core.ClipsDescendants = false
 	end)
 
+	local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+	
+	local toggleBtn = gui:object("TextButton", {
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0, 10, 0.5, 0),
+		Size = UDim2.fromOffset(40, 40),
+		BackgroundColor3 = Color3.fromRGB(50, 50, 60),
+		Text = "☰",
+		TextColor3 = Color3.fromRGB(255, 255, 255),
+		TextSize = 24,
+		Visible = isMobile
+	}):round(8)
+	
+	toggleBtn.MouseButton1Click:Connect(function()
+		Library.Toggled = not Library.Toggled
+		Library:show(Library.Toggled)
+	end)
+	
 	do
 		local dragging = false
+		local dragInput
 		local dragStart, startPos
 		
 		core.Active = true
+		
+		local function updateDrag(input)
+			local delta = input.Position - dragStart
+			local newX = startPos.X.Offset + delta.X
+			local newY = startPos.Y.Offset + delta.Y
+			
+			if Library.LockDragging then
+				newX = math.clamp(newX, core.Size.X.Offset * core.AnchorPoint.X, gui.AbsoluteSize.X - core.AbsoluteSize.X + (core.Size.X.Offset * core.AnchorPoint.X))
+				newY = math.clamp(newY, core.Size.Y.Offset * core.AnchorPoint.Y, gui.AbsoluteSize.Y - core.AbsoluteSize.Y + (core.Size.Y.Offset * core.AnchorPoint.Y))
+			end
+			
+			core:tween{
+				Position = UDim2.fromOffset(newX, newY),
+				Length = Library.DragSpeed
+			}
+		end
 		
 		core.InputBegan:Connect(function(input)
 			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 				dragging = true
 				dragStart = input.Position
 				startPos = core.Position
+				
+				input.Changed:Connect(function()
+					if input.UserInputState == Enum.UserInputState.End then
+						dragging = false
+					end
+				end)
 			end
 		end)
 		
-		core.InputEnded:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-				dragging = false
+		core.InputChanged:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+				dragInput = input
 			end
 		end)
 		
 		UserInputService.InputChanged:Connect(function(input)
-			if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-				local delta = input.Position - dragStart
-				local newX = startPos.X.Offset + delta.X
-				local newY = startPos.Y.Offset + delta.Y
-				
-				if Library.LockDragging then
-					newX = math.clamp(newX, core.Size.X.Offset * core.AnchorPoint.X, gui.AbsoluteSize.X - core.AbsoluteSize.X + (core.Size.X.Offset * core.AnchorPoint.X))
-					newY = math.clamp(newY, core.Size.Y.Offset * core.AnchorPoint.Y, gui.AbsoluteSize.Y - core.AbsoluteSize.Y + (core.Size.Y.Offset * core.AnchorPoint.Y))
-				end
-				
-				core:tween{
-					Position = UDim2.fromOffset(newX, newY),
-					Length = Library.DragSpeed
-				}
+			if dragging and input == dragInput then
+				updateDrag(input)
 			end
 		end)
 	end
