@@ -473,19 +473,21 @@ function Library:create(options)
 	local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 	
 	local toggleBtn = gui:object("TextButton", {
-		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(0, 10, 0.5, 0),
-		Size = UDim2.fromOffset(40, 40),
-		BackgroundColor3 = Color3.fromRGB(50, 50, 60),
-		Text = "☰",
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -10, 0, 10),
+		Size = UDim2.fromOffset(50, 50),
+		BackgroundColor3 = Color3.fromRGB(80, 40, 120),
+		Text = "X",
 		TextColor3 = Color3.fromRGB(255, 255, 255),
-		TextSize = 24,
+		TextSize = 28,
+		ZIndex = 999,
 		Visible = isMobile
-	}):round(8)
+	}):round(10)
 	
 	toggleBtn.MouseButton1Click:Connect(function()
 		Library.Toggled = not Library.Toggled
 		Library:show(Library.Toggled)
+		toggleBtn.Text = Library.Toggled and "X" or "+"
 	end)
 	
 	do
