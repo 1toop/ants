@@ -470,26 +470,6 @@ function Library:create(options)
 		core.ClipsDescendants = false
 	end)
 
-	local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
-	
-	local toggleBtn = gui:object("TextButton", {
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -10, 0, 10),
-		Size = UDim2.fromOffset(50, 50),
-		BackgroundColor3 = Color3.fromRGB(80, 40, 120),
-		Text = "X",
-		TextColor3 = Color3.fromRGB(255, 255, 255),
-		TextSize = 28,
-		ZIndex = 999,
-		Visible = isMobile
-	}):round(10)
-	
-	toggleBtn.MouseButton1Click:Connect(function()
-		Library.Toggled = not Library.Toggled
-		Library:show(Library.Toggled)
-		toggleBtn.Text = Library.Toggled and "X" or "+"
-	end)
-	
 	do
 		local dragging = false
 		local dragInput
@@ -513,36 +493,52 @@ function Library:create(options)
 			}
 		end
 		
-		core.InputBegan:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-				dragging = true
-				dragStart = input.Position
-				startPos = core.Position
-				
-				input.Changed:Connect(function()
-					if input.UserInputState == Enum.UserInputState.End then
-						dragging = false
-					end
-				end)
-			end
-		end)
+		local function setupDrag(element)
+			element.InputBegan:Connect(function(input)
+				if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+					dragging = true
+					dragStart = input.Position
+					startPos = core.Position
+					
+					input.Changed:Connect(function()
+						if input.UserInputState == Enum.UserInputState.End then
+							dragging = false
+						end
+					end)
+				end
+			end)
+			
+			element.InputChanged:Connect(function(input)
+				if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+					dragInput = input
+				end
+			end)
+		end
 		
-		core.InputChanged:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-				dragInput = input
-			end
-		end)
+		setupDrag(core)
 		
 		UserInputService.InputChanged:Connect(function(input)
 			if dragging and input == dragInput then
 				updateDrag(input)
 			end
 		end)
+		
+		rawset(core, "setupDrag", setupDrag)
 	end
 
 	rawset(core, "oldSize", options.Size)
 
 	self.mainFrame = core
+
+	local dragArea = core:object("Frame", {
+		Size = UDim2.new(1, 0, 0, 30),
+		Position = UDim2.fromOffset(0, 0),
+		BackgroundTransparency = 1
+	})
+	
+	if core.setupDrag then
+		core.setupDrag(dragArea)
+	end
 
 	local tabButtons = core:object("ScrollingFrame", {
 		Size = UDim2.new(1, -40, 0, 25),
