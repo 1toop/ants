@@ -473,19 +473,19 @@ function Library:create(options)
 	do
 		local dragging = false
 		local dragInput
-		local dragStart, startPos
+		local dragStart, startAbsX, startAbsY
 		
 		core.Active = true
 		
 		local function updateDrag(input)
-			if not dragStart or not startPos then return end
+			if not dragStart or not startAbsX then return end
 			local delta = input.Position - dragStart
-			local newX = startPos.X.Offset + delta.X
-			local newY = startPos.Y.Offset + delta.Y
+			local newX = startAbsX + delta.X
+			local newY = startAbsY + delta.Y
 			
 			if Library.LockDragging then
-				newX = math.clamp(newX, core.Size.X.Offset * core.AnchorPoint.X, gui.AbsoluteSize.X - core.AbsoluteSize.X + (core.Size.X.Offset * core.AnchorPoint.X))
-				newY = math.clamp(newY, core.Size.Y.Offset * core.AnchorPoint.Y, gui.AbsoluteSize.Y - core.AbsoluteSize.Y + (core.Size.Y.Offset * core.AnchorPoint.Y))
+				newX = math.clamp(newX, core.AbsoluteSize.X * core.AnchorPoint.X, gui.AbsoluteSize.X - core.AbsoluteSize.X + (core.AbsoluteSize.X * core.AnchorPoint.X))
+				newY = math.clamp(newY, core.AbsoluteSize.Y * core.AnchorPoint.Y, gui.AbsoluteSize.Y - core.AbsoluteSize.Y + (core.AbsoluteSize.Y * core.AnchorPoint.Y))
 			end
 			
 			core:tween{
@@ -499,13 +499,17 @@ function Library:create(options)
 				if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 					dragging = true
 					dragStart = input.Position
-					startPos = core.Position
+					local absPos = core.AbsolutePosition
+					local anchor = core.AnchorPoint
+					startAbsX = absPos.X + core.AbsoluteSize.X * anchor.X
+					startAbsY = absPos.Y + core.AbsoluteSize.Y * anchor.Y
 					
 					input.Changed:Connect(function()
 						if input.UserInputState == Enum.UserInputState.End then
 							dragging = false
 							dragStart = nil
-							startPos = nil
+							startAbsX = nil
+							startAbsY = nil
 						end
 					end)
 				end
@@ -521,7 +525,7 @@ function Library:create(options)
 		setupDrag(core)
 		
 		UserInputService.InputChanged:Connect(function(input)
-			if dragging and input == dragInput and dragStart and startPos then
+			if dragging and input == dragInput and dragStart and startAbsX then
 				updateDrag(input)
 			end
 		end)
