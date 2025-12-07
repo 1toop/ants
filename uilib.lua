@@ -2850,7 +2850,11 @@ function Library:credit(options)
 			})
 
 			discordContainer.MouseButton1Click:connect(function()
-				setclipboard(options.Discord)
+				local dc = options.Discord
+				if not string.find(dc, "discord") and not string.find(dc, "%.") and not string.find(dc, "#") then
+					dc = "discord.gg/" .. dc
+				end
+				setclipboard(dc)
 			end)
 		end
 
