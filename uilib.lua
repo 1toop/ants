@@ -478,6 +478,7 @@ function Library:create(options)
 		core.Active = true
 		
 		local function updateDrag(input)
+			if not dragStart or not startPos then return end
 			local delta = input.Position - dragStart
 			local newX = startPos.X.Offset + delta.X
 			local newY = startPos.Y.Offset + delta.Y
@@ -503,6 +504,8 @@ function Library:create(options)
 					input.Changed:Connect(function()
 						if input.UserInputState == Enum.UserInputState.End then
 							dragging = false
+							dragStart = nil
+							startPos = nil
 						end
 					end)
 				end
@@ -518,7 +521,7 @@ function Library:create(options)
 		setupDrag(core)
 		
 		UserInputService.InputChanged:Connect(function(input)
-			if dragging and input == dragInput then
+			if dragging and input == dragInput and dragStart and startPos then
 				updateDrag(input)
 			end
 		end)
