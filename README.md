@@ -13,26 +13,52 @@ Release In A Week Or Few Days! (made this readme on 06.12.25)
 - Auto Dig
 - Auto Convert
 - Collect Tokens
+- Collect Bubbles
 - Limit Token Range
 - Auto Claim Badges
-- Capacity % Before Converting
+- Avoid Mobs
+- Farm Sprouts
+- Farm Boosted Field
+- Place Hydrants
+- Hydrant Type
+- Mob Distance
+- Capacity %
 - Speed
 - Token Range
 - Token Blacklist
+- Sprout Rarities
+
+## Boosters
+- Auto Use Boosters
+- Use Red Booster
+- Use Blue Booster
+- Use White Booster
+- Auto Termite Dispenser
+- Boosted Fields Selection
 
 ## Quests
-- Auto Accept/Complete Quests
-- Npc Selection
-
-## Config
-- Save/Load
-- Create/Delete/Reset
+- Auto Quests Accept/Complete
+- NPC Selection
 
 ## Webhook
 - Discord Stats
 - Session Time
 - Items Tracking
+- Quest Notifications
+- Send Interval
+
+## Stats
+- Stats Overlay
+- Overlay Text Size
+- Session Stats
+- Nectar/Hour
+- Pollen
+- Field
+- Status
 
 ## Settings
 - Move Method (Tween/TP)
+- Token Move Method (Walk/Tween/TP)
 - Tween Speed
+- Config System
+- Import/Export Config
