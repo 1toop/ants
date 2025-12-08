@@ -1396,14 +1396,16 @@ function Library:toggle(options)
 		toggle()
 	end
 
-	function methods:SetState(state)
+	function methods:SetState(state, nocb)
 		toggled = state
 		if toggled then
 			offIcon:crossfade(onIcon, 0.1)
 		else
 			onIcon:crossfade(offIcon, 0.1)
 		end
-		task.spawn(function() options.Callback(toggled) end)
+		if not nocb then
+			task.spawn(function() options.Callback(toggled) end)
+		end
 	end
 
 	if options.StartingState then methods:SetState(true) end
@@ -3413,6 +3415,14 @@ function Library:slider(options)
 
 	function methods:Set(value)
 		sliderLine:tween{Size = UDim2.fromScale(((value - options.Min) / (options.Max - options.Min)), 1)}
+	end
+
+	function methods:SetValue(value)
+		value = math.clamp(value, options.Min, options.Max)
+		local percentage = (value - options.Min) / (options.Max - options.Min)
+		valueText.Text = tostring(value)
+		valueText:tween{Size = UDim2.fromOffset(valueText.TextBounds.X + 20, 20), Length = 0.05}
+		sliderLine:tween{Length = 0.06, Size = UDim2.fromScale(percentage, 1)}
 	end
 
 	return methods
