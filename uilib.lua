@@ -1663,23 +1663,15 @@ function Library:dropdown(options)
 	end
 
 	function methods:AddItems(fitems)
-		for i, v in next, fitems do
+		for _, v in next, fitems do
+			local label, value
 			if typeof(v) == "table" then
-				items[#items+1] = v
+				label = v[1]
+				value = v[2]
 			else
-				items[#items+1] = {tostring(v), v}
+				label = tostring(v)
+				value = v
 			end
-		end
-
-		newSize = (25 * #items) + 5
-		itemContainer:tween{Size = (not open and UDim2.new(1, -10, 0, 0)) or UDim2.new(1, -10, 0, newSize)}
-		dropdownContainer:tween({Size = (not open and UDim2.new(1, -20, 0, 52)) or UDim2.new(1, -20, 0, 52 + newSize)})
-
-		for i, item in next, items do
-			local label = item[1]
-			local value = item[2]
-
-			if type(label) == "table" then continue end
 
 			local newItem = itemContainer:object("TextButton", {
 				Theme = {
@@ -1690,11 +1682,10 @@ function Library:dropdown(options)
 				TextSize = 14
 			}):round(5)
 
-			items[i] = {{label, value}, newItem}
+			items[#items + 1] = {{label, value}, newItem}
 
 			do
 				local hovered = false
-				local down = false
 
 				newItem.MouseEnter:connect(function()
 					hovered = true
@@ -1703,9 +1694,7 @@ function Library:dropdown(options)
 
 				newItem.MouseLeave:connect(function()
 					hovered = false
-					if not down then
-						newItem:tween{BackgroundColor3 = Library:lighten(Library.CurrentTheme.Secondary, 25)}
-					end
+					newItem:tween{BackgroundColor3 = Library:lighten(Library.CurrentTheme.Secondary, 25)}
 				end)
 
 				newItem.MouseButton1Down:connect(function()
@@ -1724,8 +1713,12 @@ function Library:dropdown(options)
 					selectedText:tween{Size = UDim2.fromOffset(selectedText.TextBounds.X + 20, 20), Length = 0.05}
 					options.Callback(value)
 				end)
-			end		
+			end
 		end
+
+		newSize = (25 * #items) + 5
+		itemContainer:tween{Size = (not open and UDim2.new(1, -10, 0, 0)) or UDim2.new(1, -10, 0, newSize)}
+		dropdownContainer:tween({Size = (not open and UDim2.new(1, -20, 0, 52)) or UDim2.new(1, -20, 0, 52 + newSize)})
 
 		Library._resize_tab({
 			container = container,
