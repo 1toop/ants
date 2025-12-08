@@ -1626,30 +1626,39 @@ function Library:dropdown(options)
 
 	function methods:RemoveItems(fitems)
 		for _, v in next, fitems do
-			for _2, v2 in next, items do
-				local label = v2[1][1]
-				if label:lower() == tostring(v):lower() then
-					v2[2].AbsoluteObject:Destroy()
-					items[_2] = nil
-					table.remove(items, _2)
-					newSize = (25 * #items) + 5
-					itemContainer:tween{Size = (not open and UDim2.new(1, -10, 0, 0)) or UDim2.new(1, -10, 0, newSize)}
-					dropdownContainer:tween({Size = (not open and UDim2.new(1, -20, 0, 52)) or UDim2.new(1, -20, 0, 52 + newSize)})
+			for _2 = #items, 1, -1 do
+				local v2 = items[_2]
+				if v2 and v2[1] and v2[1][1] then
+					local label = v2[1][1]
+					if label:lower() == tostring(v):lower() then
+						if v2[2] and v2[2].AbsoluteObject then
+							v2[2].AbsoluteObject:Destroy()
+						end
+						table.remove(items, _2)
+					end
 				end
 			end
 		end
+		newSize = (25 * #items) + 5
+		itemContainer:tween{Size = (not open and UDim2.new(1, -10, 0, 0)) or UDim2.new(1, -10, 0, newSize)}
+		dropdownContainer:tween({Size = (not open and UDim2.new(1, -20, 0, 52)) or UDim2.new(1, -20, 0, 52 + newSize)})
 	end
 
 	function methods:Clear()
-		table.clear(items)
-		itemContainer:tween{Size = UDim2.new(1, -10, 0, 0)}
-		dropdownContainer:tween({Size = UDim2.new(1, -20, 0, 52)}, function()
-			for i, v in next, itemContainer.AbsoluteObject:GetChildren() do
-				if v.ClassName == "TextButton" then
-					v:Destroy()
-				end
+		for _, v in next, items do
+			if v and v[2] and v[2].AbsoluteObject then
+				v[2].AbsoluteObject:Destroy()
 			end
-		end)
+		end
+		for i, v in next, itemContainer.AbsoluteObject:GetChildren() do
+			if v.ClassName == "TextButton" then
+				v:Destroy()
+			end
+		end
+		items = {}
+		newSize = 5
+		itemContainer.Size = UDim2.new(1, -10, 0, 0)
+		dropdownContainer.Size = UDim2.new(1, -20, 0, 52)
 		if open then toggle() end
 	end
 
@@ -3537,6 +3546,10 @@ function Library:textbox(options)
 
 	function methods:Set(text)
 		textBox.Text = text
+	end
+
+	function methods:SetPlaceholder(text)
+		textBox.PlaceholderText = text
 	end
 
 	return methods
