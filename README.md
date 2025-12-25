@@ -1,4 +1,4 @@
-# [Ants Simulator 2 Script!](https://www.roblox.com/games/16667590131/Ants-Simulator-2) <img width="892" height="338" alt="image" src="https://github.com/user-attachments/assets/84172e62-89a7-49ce-bed7-217068704610" />
+# [Ants Simulator 2 Script!](https://www.roblox.com/games/16667590131/Ants-Simulator-2) <img width="768" height="432" alt="image" src="https://github.com/user-attachments/assets/8756b7c5-6dc1-4d8b-8792-c20342d3da7f" />
 
 Release In A Week Or Few Days! (made this readme on 06.12.25)
 
